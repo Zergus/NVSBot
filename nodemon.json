@@ -1,0 +1,11 @@
+{
+  "watch": [
+    "dist"
+  ],
+  "ext": "js,json",
+  "ignore": [
+    "src",
+    "node_modules"
+  ],
+  "exec": "node dist/dev.js"
+}
