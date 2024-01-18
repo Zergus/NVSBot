@@ -10,14 +10,35 @@ import { FROM, TYPE, log } from "../utils/logger";
 import { LocalStateService } from "../services/state/LocalStateService";
 import { ChatCompletionCreateParams } from "openai/resources";
 
+/**
+ * Represents the result of a bot conversation.
+ */
 export type BotConversationResult = {
+  /**
+   * The resolution of the conversation, which can be "book", "cancel", or "check".
+   */
   resolution: "book" | "cancel" | "check";
+  /**
+   * The date associated with the conversation result.
+   */
   date: string;
+  /**
+   * The time associated with the conversation result, if available.
+   */
   time: string | undefined;
+  /**
+   * The name associated with the conversation result.
+   */
   name: string;
+  /**
+   * The number of people associated with the conversation result, if available.
+   */
   people: string | undefined;
 };
 
+/**
+ * Represents information about a bot message.
+ */
 export type BotMessageInfo = {
   messageId: number;
   username: string;
@@ -30,30 +51,99 @@ export type BotMessageInfo = {
   isAddressingBot: boolean;
 };
 
-type BotConfig = {
+/**
+ * Represents the configuration options for the Bot.
+ */
+export type BotConfig = {
+  /**
+   * The prompt service used by the Bot.
+   */
   promptService: PromptServiceInterface<unknown>;
+  /**
+   * The history service used by the Bot.
+   */
   historyService: HistoryManagerInterface<unknown>;
+  /**
+   * The Telegram token used by the Bot.
+   */
   telegramToken: string;
+  /**
+   * The allowed chats for the Bot.
+   */
   allowedChats: string[];
+  /**
+   * The command used by the Bot.
+   */
   command: string;
+  /**
+   * The default response used by the Bot.
+   */
   defaultResponse: string;
+  /**
+   * The options for the Telegram Bot.
+   */
   telegramBotOptions: TelegramBot.ConstructorOptions;
+  /**
+   * The function called when the conversation ends.
+   * @param message - The message indicating the end of the conversation.
+   * @returns The result of the end of conversation function.
+   */
   endOfConversationFn: (message: string) => any;
 };
 
+/**
+ * Configuration object for creating a bot.
+ */
 export type BotCreateConfig = {
+  /**
+   * The command used to invoke the bot.
+   */
   command: string;
+  /**
+   * The OpenAI API key.
+   */
   openAIKey: string;
+  /**
+   * The name of the DynamoDB table used for storing conversation history.
+   */
   dynamoDBTableName: string;
+  /**
+   * An array of allowed chat IDs.
+   */
   allowedChats: string[];
+  /**
+   * The Telegram bot token.
+   */
   telegramToken: string;
+  /**
+   * The default response when the bot doesn't have a specific answer.
+   */
   defaultResponse: string;
+  /**
+   * A function that generates the system prompt for the chat.
+   * @param username - The username of the chat participant.
+   * @returns The system prompt.
+   */
   systemPromptFunc: (username?: string) => string;
+  /**
+   * The model to use for chat completion.
+   */
   model: ChatCompletionCreateParams["model"];
+  /**
+   * A function called when the conversation ends.
+   * @param message - The final message of the conversation.
+   * @returns The result of the end of conversation function.
+   */
   endOfConversationFn: (message: string) => any;
+  /**
+   * Optional options for configuring the Telegram bot.
+   */
   telegramBotOptions?: TelegramBot.ConstructorOptions;
 };
 
+/**
+ * Represents a Bot that interacts with users through Telegram.
+ */
 export class Bot {
   private telegramBot: TelegramBot;
   private historyManager: HistoryManagerInterface<unknown>;
@@ -64,6 +154,12 @@ export class Bot {
   private endOfConversationFn: (message: string) => any;
   private defaultResponse: string = "";
 
+  /**
+   * Creates a new instance of the Bot class.
+   * @param {BotConfig} config - The configuration object for the Bot.
+   * @throws {Error} Throws an error if the telegramToken or allowedChats are missing.
+   * @returns {Bot} The newly created Bot instance.
+   */
   constructor({
     promptService,
     historyService,

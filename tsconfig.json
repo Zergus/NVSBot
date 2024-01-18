@@ -9,7 +9,8 @@
     "esModuleInterop": true, // Enables compatibility with default import syntax in Babel
     "skipLibCheck": true, // Skip type checking of all declaration files (*.d.ts)
     "forceConsistentCasingInFileNames": true, // Disallow inconsistently-cased references to the same file
-    "declaration": true
+    "declaration": true,
+    "removeComments": false
   },
   "include": [
     "src/**/*.ts" // Include all TypeScript files in src directory

@@ -1,7 +1,7 @@
 import { StateServiceInterface } from "./StateServiceInterface";
 import OpenAI from "openai";
 
-type LocalState = {
+export type LocalState = {
   id: string;
   messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[];
 }[];

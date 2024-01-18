@@ -1,6 +1,6 @@
 const path = require("path");
 const entry = {
-  prod: "./src/index.ts",
+  prod: "./src/main.ts",
   dev: "./src/dev.ts",
   play: "./src/play.ts",
   proxy: "./src/proxy.ts",

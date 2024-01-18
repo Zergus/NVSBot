@@ -8,16 +8,23 @@ import { StateServiceInterface } from "./StateServiceInterface";
 import moment from "moment";
 import OpenAI from "openai";
 
-type DynamoDBServiceConfig = {
+/**
+ * Configuration options for DynamoDBService.
+ */
+export type DynamoDBServiceConfig = {
+  /**
+   * The name of the DynamoDB table.
+   */
   tableName: string;
+  /**
+   * Additional configuration options for DynamoDBService.
+   */
   config?: DynamoDBServiceConfig;
 };
 
-type LocalHistory = {
-  id: string;
-  messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[];
-};
-
+/**
+ * Represents a service for interacting with DynamoDB.
+ */
 export class DynamoDBService
   implements
     StateServiceInterface<OpenAI.Chat.Completions.ChatCompletionMessageParam>
@@ -25,12 +32,21 @@ export class DynamoDBService
   private dynamoDBClient: DynamoDBClient;
   private tableName: string;
 
+  /**
+   * Constructs a new instance of the DynamoDBService class.
+   * @param {DynamoDBServiceConfig} options - The configuration options for the service.
+   */
   constructor({ tableName, config }: DynamoDBServiceConfig) {
     this.dynamoDBClient = new DynamoDBClient(config || {});
     this.tableName = tableName;
     return this;
   }
 
+  /**
+   * Retrieves an item from DynamoDB by its ID.
+   * @param {string} id - The ID of the item to retrieve.
+   * @returns {Promise<OpenAI.Chat.Completions.ChatCompletionMessageParam[]>} A promise that resolves to an array of chat completion messages.
+   */
   public async getItemById(
     id: string
   ): Promise<OpenAI.Chat.Completions.ChatCompletionMessageParam[]> {
@@ -50,6 +66,12 @@ export class DynamoDBService
     );
   }
 
+  /**
+   * Sets an item in DynamoDB by its ID.
+   * @param {string} id - The ID of the item to set.
+   * @param {OpenAI.Chat.Completions.ChatCompletionMessageParam[]} update - The chat completion messages to set.
+   * @returns {Promise<void>} A promise that resolves when the item is set successfully.
+   */
   public async setItemById(
     id: string,
     update: OpenAI.Chat.Completions.ChatCompletionMessageParam[]

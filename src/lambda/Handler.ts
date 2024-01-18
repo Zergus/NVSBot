@@ -3,7 +3,15 @@ import { Message } from "node-telegram-bot-api";
 import { FROM, TYPE, log } from "../utils/logger";
 import { Lambda } from "aws-sdk";
 
+/**
+ * Represents a handler class that creates lambda functions.
+ */
 export class Handler {
+  /**
+   * Creates a main lambda function.
+   * @param callback - The callback function to be executed by the lambda.
+   * @returns An async function that represents the main lambda.
+   */
   static createMainLambda(
     callback: (
       message: Message,
@@ -43,6 +51,11 @@ export class Handler {
     };
   }
 
+  /**
+   * Creates a proxy lambda function.
+   * @param mainLambdaName - The name of the main lambda function to be invoked.
+   * @returns An async function that represents the proxy lambda.
+   */
   static createProxyLambda({ mainLambdaName }: { mainLambdaName: string }) {
     return async (
       event: APIGatewayProxyEvent
