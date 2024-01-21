@@ -355,7 +355,8 @@ export class Bot {
     message: TelegramBot.Message,
     callback: (
       result: BotConversationResult,
-      messageInfo: BotMessageInfo
+      messageInfo: BotMessageInfo,
+      instance: Bot
     ) => void | Promise<void>
   ): Promise<BotConversationResult | void> {
     log(FROM.BOT, TYPE.INFO, "Message received:", message);
@@ -383,7 +384,7 @@ export class Bot {
       const result = await this.respond(validMessage);
       log(FROM.BOT, TYPE.INFO, "Conversation result:", result);
       if (result) {
-        return callback(result, validMessage);
+        return callback(result, validMessage, this);
       }
     } catch (err) {
       log(FROM.BOT, TYPE.ERROR, "Conversation error:", err);

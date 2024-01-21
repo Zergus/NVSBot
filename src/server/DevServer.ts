@@ -15,6 +15,7 @@ export class DevServer {
    */
   constructor(botConfig: BotCreateConfig) {
     this.bot = Bot.createBot(botConfig);
+    return this;
   }
 
   /**
@@ -57,7 +58,7 @@ export class DevServer {
      */
     app.post("/webhook", (req: any, res: any) => {
       const { message } = req.body;
-      callback(message);
+      this.bot.processMessage(message, callback);
       res.status(200).send("Acknowledged");
     });
 
