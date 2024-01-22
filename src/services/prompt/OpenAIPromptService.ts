@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import { PromptServiceInterface } from "./PromptServiceInterface";
 import moment from "moment";
 import { FROM, TYPE, log } from "../../utils/logger";
+import { ChatCompletionCreateParams } from "openai/resources";
 
 /**
  * Configuration object for the OpenAIPromptService.
@@ -11,6 +12,11 @@ export type OpenAIPromptServiceConfig = {
    * The OpenAI instance to be used for generating prompts.
    */
   openai: OpenAI;
+
+  /**
+   * The model to be used for generating prompts.
+   */
+  model: ChatCompletionCreateParams["model"];
 
   /**
    * A function that generates the system prompt based on the username.
@@ -29,6 +35,7 @@ export class OpenAIPromptService
     PromptServiceInterface<OpenAI.Chat.Completions.ChatCompletionMessageParam>
 {
   private openai: OpenAI;
+  private model: ChatCompletionCreateParams["model"];
   private systemPromptFunc: (username: string) => string;
 
   /**
@@ -37,8 +44,9 @@ export class OpenAIPromptService
    * @param openai - The OpenAI instance.
    * @param systemPromptFunc - The function to generate system prompts.
    */
-  constructor({ openai, systemPromptFunc }: OpenAIPromptServiceConfig) {
+  constructor({ openai, model, systemPromptFunc }: OpenAIPromptServiceConfig) {
     this.openai = openai;
+    this.model = model;
     this.systemPromptFunc = systemPromptFunc;
     return this;
   }
@@ -69,8 +77,9 @@ export class OpenAIPromptService
       name: username || String(Date.now()),
     });
     try {
+      console.log(this.model);
       const response = await this.openai.chat.completions.create({
-        model: "gpt-4",
+        model: this.model,
         messages: messages,
         max_tokens: 200,
         temperature: 0,

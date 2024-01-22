@@ -21,7 +21,7 @@ Library to help develop Telegram bot that operates OpenAI and provide utilities 
 
 ### Local development
 
-Create executable .js file which will be run by `node`. Library provides `DevServer` class which will start development server.
+Create executable .js file which will be run by `node`. Library provides `DevServer` class which will start development server. Endpoint `/webhook` will be created for dev server, which accepts POST requests.
 Example of such executable file:
 
 ```javascript
@@ -42,7 +42,7 @@ new DevServer({
   model: "gpt-3.5-turbo-16k-0613",
   endOfConversationFn: (message) => {
     if (message.match(/^\{.*\}$/)) {
-      return JSON.parse(message);
+      return message;
     }
   },
   systemPromptFunc: (username = `undefined`) => {
@@ -64,9 +64,17 @@ new DevServer({
           You must always ask for my confirmation before booking or cancelling.
           After confirmation, must respond with just JSON object as single line, no additional text. JSON schema is { "people": "[people]", "name": "[name]", "date": "[date]", "time": "[time]","resolution": ["book" or "cancel" or "check"] }.`;
   },
-}).onResult((result, messageInfo, instance) => {
-  console.log("Conversation ended:", result);
+}).onMessage(async (message, bot) => {
+  const result = await bot.processMessage(message);
+  const parsedResult = JSON.parse(result);
+  /* process the result of conversation */
 });
+```
+
+Setup webhook for your bot:
+
+```text
+https://api.telegram.org/bot<bot-token>/setWebhook?url=https://<your-host>/webkook
 ```
 
 ### Deploying WebHook bot to AWS Lambda
@@ -92,7 +100,7 @@ import { Bot, Handler } from "nvsbot-beta";
 export const handler = Handler.createMainLambda(async (message) => {
   const bot = Bot.createBot(/* configuration */);
   const result = await bot.processMessage(message);
-  /* process result */
+  /* process the result of conversation */
 });
 ```
 

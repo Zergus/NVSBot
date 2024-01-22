@@ -34,11 +34,7 @@
   },
   "scripts": {
     "start": "yarn dev",
-    "build:source": "tsc",
-    "build:prod": "rm -rf dist && webpack --env entry=prod --mode production",
-    "build:dev": "rm -rf dist && webpack --env entry=dev --mode development",
-    "build:proxy": "rm -rf dist && webpack --env entry=proxy --mode production",
-    "build:play": "rm -rf dist && webpack --env entry=play --mode development",
+    "build": "tsc",
     "watch": "tsc --watch",
     "dev": "NODE_ENV=development concurrently \"yarn watch\" \"nodemon --watch dist dist/dev.js\"",
     "release": "yarn build:source && standard-version"

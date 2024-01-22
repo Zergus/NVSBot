@@ -1,7 +1,6 @@
 import TelegramBot from "node-telegram-bot-api";
 import OpenAI from "openai";
 import { HistoryManagerInterface } from "../managers/HistoryManagerInterface";
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { BotMessageHistory } from "../managers/BotMessageHistory";
 import { OpenAIPromptService } from "../services/prompt/OpenAIPromptService";
 import { PromptServiceInterface } from "../services/prompt/PromptServiceInterface";
@@ -11,36 +10,10 @@ import { LocalStateService } from "../services/state/LocalStateService";
 import { ChatCompletionCreateParams } from "openai/resources";
 
 export type BotResultCallback = (
-  result: BotConversationResult,
-  message?: TelegramBot.Message,
-  instance?: Bot
+  result: string,
+  message: TelegramBot.Message,
+  instance: Bot
 ) => void | Promise<void>;
-
-/**
- * Represents the result of a bot conversation.
- */
-export type BotConversationResult = {
-  /**
-   * The resolution of the conversation, which can be "book", "cancel", or "check".
-   */
-  resolution: "book" | "cancel" | "check";
-  /**
-   * The date associated with the conversation result.
-   */
-  date: string;
-  /**
-   * The time associated with the conversation result, if available.
-   */
-  time: string | undefined;
-  /**
-   * The name associated with the conversation result.
-   */
-  name: string;
-  /**
-   * The number of people associated with the conversation result, if available.
-   */
-  people: string | undefined;
-};
 
 /**
  * Represents information about a bot message.
@@ -54,7 +27,6 @@ export type BotMessageInfo = {
   chatId: number;
   isBot: boolean;
   isAllowedChat: boolean;
-  isAddressingBot: boolean;
 };
 
 /**
@@ -70,10 +42,6 @@ export type BotConfig = {
    */
   historyService: HistoryManagerInterface<unknown>;
   /**
-   * The Telegram token used by the Bot.
-   */
-  telegramToken: string;
-  /**
    * The allowed chats for the Bot.
    */
   allowedChats: string[];
@@ -88,11 +56,11 @@ export type BotConfig = {
   /**
    * The options for the Telegram Bot.
    */
-  telegramBotOptions: TelegramBot.ConstructorOptions;
+  telegramBot: TelegramBot;
   /**
-   * The function called when the conversation ends.
+   * The function which define the end of the conversation. Must return a value which will be used as the result of the conversation.
    * @param message - The message indicating the end of the conversation.
-   * @returns The result of the end of conversation function.
+   * @returns The result of the end of conversation function, used as the result of the conversation.
    */
   endOfConversationFn: (message: string) => any;
 };
@@ -119,10 +87,6 @@ export type BotCreateConfig = {
    */
   allowedChats: string[];
   /**
-   * The Telegram bot token.
-   */
-  telegramToken: string;
-  /**
    * The default response when the bot doesn't have a specific answer.
    */
   defaultResponse: string;
@@ -141,24 +105,24 @@ export type BotCreateConfig = {
    * @param message - The final message of the conversation.
    * @returns The result of the end of conversation function.
    */
-  endOfConversationFn: (message: string) => any;
+  endOfConversationFn: (message: string) => unknown;
   /**
    * Optional options for configuring the Telegram bot.
    */
-  telegramBotOptions?: TelegramBot.ConstructorOptions;
+  telegramBot: TelegramBot;
 };
 
 /**
  * Represents a Bot that interacts with users through Telegram.
  */
 export class Bot {
-  private telegramBot: TelegramBot;
+  public telegramBot: TelegramBot;
   private historyManager: HistoryManagerInterface<unknown>;
   private promptService: PromptServiceInterface<unknown>;
   private allowedChats: string[];
   private command: string;
   private botInfo: TelegramBot.User | null = null;
-  private endOfConversationFn: (message: string) => any;
+  private endOfConversationFn: (message: string) => string;
   private defaultResponse: string = "";
 
   /**
@@ -170,22 +134,17 @@ export class Bot {
   constructor({
     promptService,
     historyService,
-    telegramToken,
     allowedChats,
     command,
     defaultResponse,
-    telegramBotOptions,
+    telegramBot,
     endOfConversationFn,
   }: BotConfig) {
-    if (!telegramToken) {
-      throw new Error("Missing TELEGRAM_BOT_TOKEN env variable");
-    }
-
     if (!allowedChats?.length) {
       throw new Error("Missing ALLOWED_CHAT_ID env variable");
     }
 
-    this.telegramBot = new TelegramBot(telegramToken, telegramBotOptions);
+    this.telegramBot = telegramBot;
     this.historyManager = historyService;
     this.promptService = promptService;
     this.allowedChats = allowedChats;
@@ -200,17 +159,18 @@ export class Bot {
     openAIKey: apiKey,
     dynamoDBTableName: tableName,
     allowedChats,
-    telegramToken,
+    model,
     defaultResponse,
     systemPromptFunc,
     endOfConversationFn,
-    telegramBotOptions = { webHook: true },
-  }: BotCreateConfig): Bot {
+    telegramBot,
+  }: BotCreateConfig) {
     const openai = new OpenAI({
       apiKey,
     });
     const promptService = new OpenAIPromptService({
       openai,
+      model,
       systemPromptFunc,
     });
     const stateService = tableName
@@ -221,17 +181,16 @@ export class Bot {
     const historyService = new BotMessageHistory({
       stateService,
     });
-
-    return new Bot({
+    const bot = new Bot({
       promptService,
       command,
       allowedChats,
       historyService,
-      telegramToken,
       defaultResponse,
-      telegramBotOptions,
+      telegramBot,
       endOfConversationFn,
     });
+    return bot;
   }
 
   private async getBotInfo() {
@@ -244,11 +203,9 @@ export class Bot {
    * Initiates a conversation with the user based on the message
    * If the message is a JSON object, it marks the end of the conversation
    * @param {TelegramBot.Message} message - received user message
-   * @returns {Promise<BotConversationResult | void>} - conversation result returned only if the message is a JSON object
+   * @returns {Promise<string | void>} - conversation result returned from endOfConversationFn
    */
-  private async respond(
-    messageInfo: BotMessageInfo
-  ): Promise<BotConversationResult | void> {
+  private async respond(messageInfo: BotMessageInfo): Promise<string | void> {
     const { userId, messageId, username, text, chatId } = messageInfo;
 
     try {
@@ -300,16 +257,9 @@ export class Bot {
     const bot = await this.getBotInfo();
 
     const isAllowedChat = !!this.allowedChats?.includes(String(chatId));
-    const isAddressingBot =
-      message.text?.includes(this.command) ||
-      message.reply_to_message?.from?.username === bot?.username;
 
-    const text =
-      (isAddressingBot
-        ? message.text
-        : message.text?.split(this.command)[1]?.trim()) || "";
+    const text = message.text?.replace(this.command, "").trim() || "";
 
-    console.log("isAddressingBot", isAddressingBot, text);
     const username = message.from?.username || message.from?.first_name || "";
     const isBot = !!message.from?.is_bot;
     const mention = (!!username ? "@" : "") + username;
@@ -323,7 +273,6 @@ export class Bot {
       chatId,
       isBot,
       isAllowedChat,
-      isAddressingBot,
     };
   }
 
@@ -334,18 +283,18 @@ export class Bot {
    */
   private async getValidMessage(
     message: TelegramBot.Message
-  ): Promise<BotMessageInfo> {
+  ): Promise<BotMessageInfo | void> {
+    if (!message) return;
+
     const messageInfo = await this.getMessageInfo(message);
-    const { userId, text, isBot, isAllowedChat, isAddressingBot } = messageInfo;
-    const result =
-      !!userId && !!text && !isBot && isAllowedChat && isAddressingBot;
+    const { userId, text, isBot, isAllowedChat } = messageInfo;
+    const result = !!userId && !!text && !isBot && isAllowedChat;
     if (!result) {
       log(FROM.BOT, TYPE.ERROR, "Invalid message:", {
         userId,
         text,
         isBot,
         isAllowedChat,
-        isAddressingBot,
       });
     }
     return messageInfo;
@@ -359,7 +308,7 @@ export class Bot {
   public async processMessage(
     message: TelegramBot.Message,
     callback?: BotResultCallback
-  ): Promise<BotConversationResult | void> {
+  ): Promise<string | void> {
     log(FROM.BOT, TYPE.INFO, "Message received:", message);
 
     const validMessage = await this.getValidMessage(message);
@@ -385,7 +334,7 @@ export class Bot {
       const result = await this.respond(validMessage);
       log(FROM.BOT, TYPE.INFO, "Conversation result:", result);
       if (result) {
-        callback?.(result, message, this);
+        await callback?.(result, message, this);
         return result;
       }
     } catch (err) {
@@ -394,21 +343,5 @@ export class Bot {
 
     log(FROM.BOT, TYPE.SUCCESS, "Message processed");
     return;
-  }
-
-  public getTelegramBot(): TelegramBot {
-    return this.telegramBot;
-  }
-
-  public onResult(callback: BotResultCallback) {
-    if (this.telegramBot.isPolling()) {
-      this.telegramBot.on("message", async (message) => {
-        this.processMessage(message, async (result, meta) => {
-          callback(result, meta, this);
-        });
-      });
-    } else {
-      log(FROM.BOT, TYPE.ERROR, "Bot is not polling");
-    }
   }
 }
