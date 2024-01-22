@@ -1,6 +1,6 @@
 {
   "name": "nvsbot-beta",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "description": "Not Very Smart Bot",
   "main": "dist/index.js",
   "dependencies": {
