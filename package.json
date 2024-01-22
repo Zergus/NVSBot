@@ -1,6 +1,6 @@
 {
   "name": "nvsbot-beta",
-  "version": "0.0.14",
+  "version": "0.0.15",
   "description": "Not Very Smart Bot",
   "main": "dist/index.js",
   "dependencies": {
@@ -37,7 +37,7 @@
     "build": "tsc",
     "watch": "tsc --watch",
     "dev": "NODE_ENV=development concurrently \"yarn watch\" \"nodemon --watch dist dist/dev.js\"",
-    "release": "yarn build:source && standard-version"
+    "release": "yarn build && standard-version"
   },
   "keywords": [
     "bot",
