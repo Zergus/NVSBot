@@ -1,6 +1,6 @@
 import bodyParser from "body-parser";
 import express from "express";
-import { Bot, BotCreateConfig } from "../core/Bot";
+import { Bot, BotCreateConfig, BotResultCallback } from "../core/Bot";
 import { FROM, TYPE, log } from "../utils/logger";
 
 /**
@@ -22,7 +22,7 @@ export class DevServer {
    * Sets up the message event handler and starts the server.
    * @param callback - The callback function to be executed when a message is received.
    */
-  public onMessage(callback: (...args: any) => void) {
+  public onResult(callback: BotResultCallback) {
     if (this.bot.getTelegramBot().isPolling()) {
       log(FROM.SERVER, TYPE.INFO, "Starting polling server");
       this.startPollingServer(callback);
@@ -36,15 +36,15 @@ export class DevServer {
    * Starts the polling server and sets up the message event handler.
    * @param callback - The callback function to be executed when a message is received.
    */
-  private startPollingServer(callback: (...args: any) => void) {
-    this.bot.onMessage(callback);
+  private startPollingServer(callback: BotResultCallback) {
+    this.bot.onResult(callback);
   }
 
   /**
    * Starts the webhook server and sets up the message event handler.
    * @param callback - The callback function to be executed when a message is received.
    */
-  private startWebhookServer(callback: (...args: any) => void) {
+  private startWebhookServer(callback: BotResultCallback) {
     const app = express();
     const port = process.env.LOCAL_PORT;
 

@@ -10,6 +10,12 @@ import { FROM, TYPE, log } from "../utils/logger";
 import { LocalStateService } from "../services/state/LocalStateService";
 import { ChatCompletionCreateParams } from "openai/resources";
 
+export type BotResultCallback = (
+  result: BotConversationResult,
+  message?: TelegramBot.Message,
+  instance?: Bot
+) => void | Promise<void>;
+
 /**
  * Represents the result of a bot conversation.
  */
@@ -105,8 +111,9 @@ export type BotCreateConfig = {
   openAIKey: string;
   /**
    * The name of the DynamoDB table used for storing conversation history.
+   * If empty, local storage will be used.
    */
-  dynamoDBTableName: string;
+  dynamoDBTableName?: string;
   /**
    * An array of allowed chat IDs.
    */
@@ -199,7 +206,6 @@ export class Bot {
     endOfConversationFn,
     telegramBotOptions = { webHook: true },
   }: BotCreateConfig): Bot {
-    const isDev = process.env.NODE_ENV === "development";
     const openai = new OpenAI({
       apiKey,
     });
@@ -207,14 +213,13 @@ export class Bot {
       openai,
       systemPromptFunc,
     });
-    const stateService = isDev
-      ? new LocalStateService()
-      : new DynamoDBService({
+    const stateService = tableName
+      ? new DynamoDBService({
           tableName,
-        });
+        })
+      : new LocalStateService();
     const historyService = new BotMessageHistory({
       stateService,
-      tableName,
     });
 
     return new Bot({
@@ -353,11 +358,7 @@ export class Bot {
    */
   public async processMessage(
     message: TelegramBot.Message,
-    callback: (
-      result: BotConversationResult,
-      messageInfo: BotMessageInfo,
-      instance: Bot
-    ) => void | Promise<void>
+    callback?: BotResultCallback
   ): Promise<BotConversationResult | void> {
     log(FROM.BOT, TYPE.INFO, "Message received:", message);
 
@@ -384,7 +385,8 @@ export class Bot {
       const result = await this.respond(validMessage);
       log(FROM.BOT, TYPE.INFO, "Conversation result:", result);
       if (result) {
-        return callback(result, validMessage, this);
+        callback?.(result, message, this);
+        return result;
       }
     } catch (err) {
       log(FROM.BOT, TYPE.ERROR, "Conversation error:", err);
@@ -398,11 +400,11 @@ export class Bot {
     return this.telegramBot;
   }
 
-  public onMessage(callback: (...args: any) => void) {
+  public onResult(callback: BotResultCallback) {
     if (this.telegramBot.isPolling()) {
       this.telegramBot.on("message", async (message) => {
         this.processMessage(message, async (result, meta) => {
-          callback(result, meta);
+          callback(result, meta, this);
         });
       });
     } else {

@@ -5,7 +5,6 @@ import { FROM, TYPE, log } from "../utils/logger";
 
 export type BotMessageHistoryConfig = {
   stateService: StateServiceInterface<OpenAI.Chat.Completions.ChatCompletionMessageParam>;
-  tableName: string;
 };
 
 /**
@@ -16,15 +15,13 @@ export class BotMessageHistory
     HistoryManagerInterface<OpenAI.Chat.Completions.ChatCompletionMessageParam>
 {
   private stateService: StateServiceInterface<OpenAI.Chat.Completions.ChatCompletionMessageParam>;
-  private tableName: string;
 
   /**
    * Creates a new instance of BotMessageHistory.
    * @param {BotMessageHistoryConfig} config - The configuration object for BotMessageHistory.
    */
-  constructor({ stateService, tableName }: BotMessageHistoryConfig) {
+  constructor({ stateService }: BotMessageHistoryConfig) {
     this.stateService = stateService;
-    this.tableName = tableName;
   }
 
   /**

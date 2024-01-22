@@ -13,9 +13,11 @@ Library to help develop Telegram bot that operates OpenAI and provide utilities 
 
 ## Installation
 
-`npm i --save-dev nvsbot`
+`npm i --save-dev nvsbot-beta`
 
 ## Usage
+
+`DevServer` and `Bot.createBot` provide convenient way to setup bot environment via providing config. Otherwise, `Bot` class allows for more advanced customization, eg. providing own state management class, if DynamoDB is not desired tool.
 
 ### Local development
 
@@ -62,8 +64,8 @@ new DevServer({
           You must always ask for my confirmation before booking or cancelling.
           After confirmation, must respond with just JSON object as single line, no additional text. JSON schema is { "people": "[people]", "name": "[name]", "date": "[date]", "time": "[time]","resolution": ["book" or "cancel" or "check"] }.`;
   },
-}).onMessage((message) => {
-  console.log("Message received:", message);
+}).onResult((result, messageInfo, instance) => {
+  console.log("Conversation ended:", result);
 });
 ```
 
@@ -89,10 +91,8 @@ import { Bot, Handler } from "nvsbot-beta";
 
 export const handler = Handler.createMainLambda(async (message) => {
   const bot = Bot.createBot(/* configuration */);
-  await bot.processMessage(message, async (result, meta) => {
-    const telegramBot = bot.getTelegramBot();
-    console.log("Result:", result);
-  });
+  const result = await bot.processMessage(message);
+  /* process result */
 });
 ```
 
