@@ -210,10 +210,11 @@ export class Bot {
 
     try {
       const history = await this.historyManager.getHistoryById(String(userId));
+      const isValidUsername = /^[a-zA-Z0-9_-]{1,64}$/.test(username);
 
       // Get the response from OpenAI
       const newHistory = await this.promptService.makePrompt(
-        username,
+        isValidUsername ? username : userId?.toString(),
         text,
         history
       );
@@ -254,7 +255,6 @@ export class Bot {
     const chatId = message.chat?.id;
     const userId = message.from?.id;
     const messageId = message.message_id;
-    const bot = await this.getBotInfo();
 
     const isAllowedChat = !!this.allowedChats?.includes(String(chatId));
 
@@ -281,20 +281,27 @@ export class Bot {
    * @param {TelegramBot.Message} message - received user message
    * @returns {boolean} - true if the message is valid
    */
-  private async getValidMessage(
+  private async getValidMessageInfo(
     message: TelegramBot.Message
   ): Promise<BotMessageInfo | void> {
     if (!message) return;
-
     const messageInfo = await this.getMessageInfo(message);
+    const botInfo = await this.getBotInfo();
     const { userId, text, isBot, isAllowedChat } = messageInfo;
-    const result = !!userId && !!text && !isBot && isAllowedChat;
+    const isAddressingBot =
+      text.startsWith(this.command) ||
+      message.reply_to_message?.from?.id === botInfo?.id;
+
+    const result =
+      !!userId && !!text && !isBot && isAllowedChat && isAddressingBot;
+
     if (!result) {
       log(FROM.BOT, TYPE.ERROR, "Invalid message:", {
         userId,
         text,
         isBot,
         isAllowedChat,
+        isAddressingBot,
       });
     }
     return messageInfo;
@@ -311,8 +318,10 @@ export class Bot {
   ): Promise<any | void> {
     log(FROM.BOT, TYPE.INFO, "Message received:", message);
 
-    const validMessage = await this.getValidMessage(message);
+    const validMessage = await this.getValidMessageInfo(message);
     const botInfo = await this.getBotInfo();
+    log(FROM.BOT, TYPE.INFO, "Bot info:", botInfo);
+
     if (!validMessage) return;
 
     const { text, chatId } = validMessage;
@@ -321,8 +330,8 @@ export class Bot {
       !text ||
       text.match(/help/i) ||
       text.match(/start/i) ||
-      text === this.command ||
-      text === `${this.command}@${botInfo?.username}`;
+      text === "" ||
+      text === `@${botInfo?.username}`;
 
     if (isHelpNeeded) {
       this.telegramBot.sendMessage(chatId, this.defaultResponse);

@@ -67,16 +67,15 @@ export class OpenAIPromptService
   ): Promise<OpenAI.Chat.Completions.ChatCompletionMessageParam[]> {
     log(FROM.OPEN_AI, TYPE.INFO, username, userInput);
     if (!messages.length) {
-      const isValidUsername = username?.match(/^[a-z0-9]+$/);
       messages.push({
         role: "system",
-        content: this.systemPromptFunc(isValidUsername ? username : ""),
+        content: this.systemPromptFunc(username),
       });
     }
     messages.push({
       role: "user",
       content: userInput,
-      name: username || String(Date.now()),
+      name: username,
     });
     try {
       const response = await this.openai.chat.completions.create({
