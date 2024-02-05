@@ -3,6 +3,7 @@ import { PromptServiceInterface } from "./PromptServiceInterface";
 import moment from "moment";
 import { FROM, TYPE, log } from "../../utils/logger";
 import { ChatCompletionCreateParams } from "openai/resources";
+import { match } from "assert";
 
 /**
  * Configuration object for the OpenAIPromptService.
@@ -66,9 +67,10 @@ export class OpenAIPromptService
   ): Promise<OpenAI.Chat.Completions.ChatCompletionMessageParam[]> {
     log(FROM.OPEN_AI, TYPE.INFO, username, userInput);
     if (!messages.length) {
+      const isValidUsername = username?.match(/^[a-z0-9]+$/);
       messages.push({
         role: "system",
-        content: this.systemPromptFunc(username),
+        content: this.systemPromptFunc(isValidUsername ? username : ""),
       });
     }
     messages.push({
@@ -77,7 +79,6 @@ export class OpenAIPromptService
       name: username || String(Date.now()),
     });
     try {
-      console.log(this.model);
       const response = await this.openai.chat.completions.create({
         model: this.model,
         messages: messages,

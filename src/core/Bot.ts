@@ -105,7 +105,7 @@ export type BotCreateConfig = {
    * @param message - The final message of the conversation.
    * @returns The result of the end of conversation function.
    */
-  endOfConversationFn: (message: string) => unknown;
+  endOfConversationFn: (message: string) => any;
   /**
    * Optional options for configuring the Telegram bot.
    */
@@ -122,7 +122,7 @@ export class Bot {
   private allowedChats: string[];
   private command: string;
   private botInfo: TelegramBot.User | null = null;
-  private endOfConversationFn: (message: string) => string;
+  private endOfConversationFn: (message: string) => any;
   private defaultResponse: string = "";
 
   /**
@@ -308,7 +308,7 @@ export class Bot {
   public async processMessage(
     message: TelegramBot.Message,
     callback?: BotResultCallback
-  ): Promise<string | void> {
+  ): Promise<any | void> {
     log(FROM.BOT, TYPE.INFO, "Message received:", message);
 
     const validMessage = await this.getValidMessage(message);
