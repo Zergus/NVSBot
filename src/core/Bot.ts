@@ -27,6 +27,7 @@ export type BotMessageInfo = {
   chatId: number;
   isBot: boolean;
   isAllowedChat: boolean;
+  isTextMessage: boolean;
 };
 
 /**
@@ -263,6 +264,7 @@ export class Bot {
     const username = message.from?.username || message.from?.first_name || "";
     const isBot = !!message.from?.is_bot;
     const mention = (!!username ? "@" : "") + username;
+    const isTextMessage = message.hasOwnProperty("text");
 
     return {
       messageId,
@@ -273,6 +275,7 @@ export class Bot {
       chatId,
       isBot,
       isAllowedChat,
+      isTextMessage,
     };
   }
 
@@ -287,10 +290,12 @@ export class Bot {
     if (!message) return;
     const messageInfo = await this.getMessageInfo(message);
     const botInfo = await this.getBotInfo();
-    const { userId, text, isBot, isAllowedChat } = messageInfo;
+    const { userId, text, isBot, isAllowedChat, isTextMessage } = messageInfo;
+
     const isAddressingBot =
-      text.startsWith(this.command) ||
-      message.reply_to_message?.from?.id === botInfo?.id;
+      isTextMessage &&
+      (text.startsWith(this.command) ||
+        message.reply_to_message?.from?.id === botInfo?.id);
 
     const result =
       !!userId && !!text && !isBot && isAllowedChat && isAddressingBot;
@@ -303,6 +308,7 @@ export class Bot {
         isAllowedChat,
         isAddressingBot,
       });
+      return;
     }
     return messageInfo;
   }
