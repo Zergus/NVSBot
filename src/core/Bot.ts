@@ -292,10 +292,9 @@ export class Bot {
     const botInfo = await this.getBotInfo();
     const { userId, text, isBot, isAllowedChat, isTextMessage } = messageInfo;
 
+    const isReplyToBot = message.reply_to_message?.from?.id === botInfo?.id;
     const isAddressingBot =
-      isTextMessage &&
-      (text.startsWith(this.command) ||
-        message.reply_to_message?.from?.id === botInfo?.id);
+      isTextMessage && (isReplyToBot || message.text?.startsWith(this.command));
 
     const result =
       !!userId && !!text && !isBot && isAllowedChat && isAddressingBot;
@@ -324,8 +323,8 @@ export class Bot {
   ): Promise<any | void> {
     log(FROM.BOT, TYPE.INFO, "Message received:", message);
 
-    const validMessage = await this.getValidMessageInfo(message);
     const botInfo = await this.getBotInfo();
+    const validMessage = await this.getValidMessageInfo(message);
     log(FROM.BOT, TYPE.INFO, "Bot info:", botInfo);
 
     if (!validMessage) return;
