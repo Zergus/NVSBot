@@ -1,8 +1,6 @@
 import { GoogleGenerativeAI, ChatSession } from "@google/generative-ai";
 import { PromptServiceInterface } from "./PromptServiceInterface";
 import { FROM, TYPE, log } from "../../utils/logger";
-import "moment-timezone";
-import moment from "moment";
 
 /**
  * Configuration object for the GeminiPromptService.
@@ -77,55 +75,29 @@ export class GeminiPromptService
     messages: GeminiMessage[]
   ): Promise<GeminiMessage[]> {
     log(FROM.GEMINI, TYPE.INFO, username, userInput);
-    const timezone = "Europe/Kiev";
-    const dayToday = moment().tz(timezone).format("dddd");
-    const dateToday = new Date().toLocaleDateString("uk-UA");
     try {
-      // Initialize chat session if it doesn't exist or if messages array is empty
-      if (!this.chatSessions.has(username) || !messages.length) {
-        const systemInstruction = this.systemPromptFunc(username);
-        const model = this.genAI.getGenerativeModel({
-          model: this.modelName,
-          systemInstruction: systemInstruction,
-        });
-
-        if (!messages.length) {
-          messages.push({
-            role: "user",
-            parts: `Інструкція для бота: ім'я користувача: ${
-              username || "потрібно запитати"
-            }; cьогодні ${dateToday}, ${dayToday}.`,
-          });
-        }
-
-        // Convert existing messages to Gemini format for chat history
-        const history = messages.map((msg) => ({
-          role: msg.role,
-          parts: [{ text: msg.parts }],
-        }));
-
-        // Create new chat with initial history, if any
-        const chat = model.startChat({
-          history: history,
-        });
-
-        this.chatSessions.set(username, chat);
-      }
-
-      const chat = this.chatSessions.get(username)!;
-
-      // Add user message to messages array
+      const systemInstruction = this.systemPromptFunc(username);
+      const model = this.genAI.getGenerativeModel({
+        model: this.modelName,
+        systemInstruction,
+      });
+      const history = messages.map((msg) => ({
+        role: msg.role,
+        parts: [{ text: msg.parts }],
+      }));
+      const chat = model.startChat({
+        history,
+      });
+      this.chatSessions.set(username, chat);
       messages.push({
         role: "user",
         parts: userInput,
       });
 
-      // Send message and get response
       const result = await chat.sendMessage(userInput);
-      const response = await result.response;
+      const response = result.response;
       const responseText = response.text();
 
-      // Add model response to messages array
       messages.push({
         role: "model",
         parts: responseText,

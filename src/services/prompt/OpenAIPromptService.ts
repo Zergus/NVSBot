@@ -2,8 +2,6 @@ import OpenAI from "openai";
 import { PromptServiceInterface } from "./PromptServiceInterface";
 import { FROM, TYPE, log } from "../../utils/logger";
 import { ChatCompletionCreateParams } from "openai/resources";
-import "moment-timezone";
-import moment from "moment";
 
 /**
  * Configuration object for the OpenAIPromptService.
@@ -66,19 +64,10 @@ export class OpenAIPromptService
     messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[]
   ): Promise<OpenAI.Chat.Completions.ChatCompletionMessageParam[]> {
     log(FROM.OPEN_AI, TYPE.INFO, username, userInput);
-    const timezone = "Europe/Kiev";
-    const dayToday = moment().tz(timezone).format("dddd");
-    const dateToday = new Date().toLocaleDateString("uk-UA");
     if (!messages.length) {
       messages.push({
         role: "system",
         content: this.systemPromptFunc(username),
-      });
-      messages.push({
-        role: "user",
-        content: `Інструкція для бота: ім'я користувача: ${
-          username || "потрібно запитати"
-        }; cьогодні ${dateToday}, ${dayToday}.`,
       });
     }
     messages.push({

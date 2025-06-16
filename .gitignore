@@ -6,4 +6,5 @@ src/playground.ts
 src/dev.ts
 src/main.ts
 src/proxy.ts
-```
+.DS_Store
+.vscode
