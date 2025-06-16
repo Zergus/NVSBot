@@ -66,6 +66,7 @@ export class BotMessageHistory
   public getLastMessage(
     history: OpenAI.Chat.Completions.ChatCompletionMessageParam[]
   ): string {
+    console.log(history);
     return String(history.at(-1)?.content) || "";
   }
 }

@@ -2,6 +2,7 @@ export enum FROM {
   LAMBDA = "Lambda",
   BOT = "Bot",
   OPEN_AI = "OpenAI",
+  GEMINI = "Gemini",
   GOOGLE_SHEETS = "GoogleSheets",
   DYNAMO_DB = "DynamoDB",
   HISTORY = "History",

@@ -1,9 +1,8 @@
 import OpenAI from "openai";
 import { PromptServiceInterface } from "./PromptServiceInterface";
-import moment from "moment";
 import { FROM, TYPE, log } from "../../utils/logger";
 import { ChatCompletionCreateParams } from "openai/resources";
-import { match } from "assert";
+import moment from "moment";
 
 /**
  * Configuration object for the OpenAIPromptService.
@@ -66,10 +65,18 @@ export class OpenAIPromptService
     messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[]
   ): Promise<OpenAI.Chat.Completions.ChatCompletionMessageParam[]> {
     log(FROM.OPEN_AI, TYPE.INFO, username, userInput);
+    const dayToday = moment().format("dddd");
+    const dateToday = new Date().toLocaleDateString("uk-UA");
     if (!messages.length) {
       messages.push({
         role: "system",
         content: this.systemPromptFunc(username),
+      });
+      messages.push({
+        role: "user",
+        content: `Інструкція для бота: ім'я користувача: ${
+          username || "потрібно запитати"
+        }; cьогодні ${dateToday}, ${dayToday}.`,
       });
     }
     messages.push({
@@ -91,5 +98,26 @@ export class OpenAIPromptService
       log(FROM.OPEN_AI, TYPE.ERROR, err);
       return messages;
     }
+  }
+
+  /**
+   * Gets the last message content from the OpenAI message array.
+   * @param messages The array of OpenAI messages.
+   * @returns The content of the last message or null if no message found.
+   */
+  public getLastMessage(
+    messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[]
+  ): string | null {
+    if (!messages.length) return null;
+
+    const lastMessage = messages[messages.length - 1];
+    if (
+      lastMessage.role === "assistant" &&
+      typeof lastMessage.content === "string"
+    ) {
+      return lastMessage.content;
+    }
+
+    return null;
   }
 }

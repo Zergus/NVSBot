@@ -3,6 +3,7 @@ import OpenAI from "openai";
 import { HistoryManagerInterface } from "../managers/HistoryManagerInterface";
 import { BotMessageHistory } from "../managers/BotMessageHistory";
 import { OpenAIPromptService } from "../services/prompt/OpenAIPromptService";
+import { GeminiPromptService } from "../services/prompt/GeminiPromptService";
 import { PromptServiceInterface } from "../services/prompt/PromptServiceInterface";
 import { DynamoDBService } from "../services/state/DynamoDBService";
 import { FROM, TYPE, log } from "../utils/logger";
@@ -75,9 +76,17 @@ export type BotCreateConfig = {
    */
   command: string;
   /**
-   * The OpenAI API key.
+   * The AI provider to use ("openai" or "gemini").
    */
-  openAIKey: string;
+  provider: "openai" | "gemini";
+  /**
+   * The OpenAI API key (required when provider is "openai").
+   */
+  openAIKey?: string;
+  /**
+   * The Gemini API key (required when provider is "gemini").
+   */
+  geminiKey?: string;
   /**
    * The name of the DynamoDB table used for storing conversation history.
    * If empty, local storage will be used.
@@ -99,8 +108,10 @@ export type BotCreateConfig = {
   systemPromptFunc: (username?: string) => string;
   /**
    * The model to use for chat completion.
+   * For OpenAI: e.g., "gpt-3.5-turbo", "gpt-4"
+   * For Gemini: e.g., "gemini-pro", "gemini-pro-vision"
    */
-  model: ChatCompletionCreateParams["model"];
+  model: string;
   /**
    * A function called when the conversation ends.
    * @param message - The final message of the conversation.
@@ -157,7 +168,9 @@ export class Bot {
 
   static createBot({
     command,
-    openAIKey: apiKey,
+    provider,
+    openAIKey,
+    geminiKey,
     dynamoDBTableName: tableName,
     allowedChats,
     model,
@@ -166,14 +179,14 @@ export class Bot {
     endOfConversationFn,
     telegramBot,
   }: BotCreateConfig) {
-    const openai = new OpenAI({
-      apiKey,
-    });
-    const promptService = new OpenAIPromptService({
-      openai,
+    const promptService = this.createPromptService({
+      provider,
+      openAIKey,
+      geminiKey,
       model,
       systemPromptFunc,
     });
+
     const stateService = tableName
       ? new DynamoDBService({
           tableName,
@@ -192,6 +205,48 @@ export class Bot {
       endOfConversationFn,
     });
     return bot;
+  }
+
+  private static createPromptService({
+    provider,
+    openAIKey,
+    geminiKey,
+    model,
+    systemPromptFunc,
+  }: {
+    provider: "openai" | "gemini";
+    openAIKey?: string;
+    geminiKey?: string;
+    model: string;
+    systemPromptFunc: (username?: string) => string;
+  }): PromptServiceInterface<unknown> {
+    // Validate required API keys based on provider
+    if (provider === "openai" && !openAIKey) {
+      throw new Error("OpenAI API key is required when using OpenAI provider");
+    }
+    if (provider === "gemini" && !geminiKey) {
+      throw new Error("Gemini API key is required when using Gemini provider");
+    }
+
+    // Create the appropriate prompt service based on provider
+    if (provider === "openai") {
+      const openai = new OpenAI({
+        apiKey: openAIKey!,
+      });
+      return new OpenAIPromptService({
+        openai,
+        model: model as ChatCompletionCreateParams["model"],
+        systemPromptFunc,
+      });
+    } else if (provider === "gemini") {
+      return new GeminiPromptService({
+        apiKey: geminiKey!,
+        modelName: model,
+        systemPromptFunc,
+      });
+    } else {
+      throw new Error(`Unsupported provider: ${provider}`);
+    }
   }
 
   private async getBotInfo() {
@@ -213,18 +268,24 @@ export class Bot {
       const history = await this.historyManager.getHistoryById(String(userId));
       const isValidUsername = /^[a-zA-Z0-9_-]{1,64}$/.test(username);
 
-      // Get the response from OpenAI
+      // Get the response from the prompt service
       const newHistory = await this.promptService.makePrompt(
         isValidUsername ? username : userId?.toString(),
         text,
         history
       );
-      const lastLLMMessage = this.historyManager.getLastMessage(newHistory);
+      const lastLLMMessage = this.promptService.getLastMessage(newHistory);
 
       log(FROM.BOT, TYPE.INFO, "LLM response:", lastLLMMessage);
 
+      // Handle case where no message was found
+      if (!lastLLMMessage) {
+        log(FROM.BOT, TYPE.ERROR, "No LLM response found");
+        return;
+      }
+
       // Check if the response is a JSON object which marks the end of the conversation
-      const result = lastLLMMessage?.match(/^(\{.+\})$/m)?.[0];
+      const result = lastLLMMessage.match(/^(\{.+\})$/m)?.[0];
       const endOfConversation = this.endOfConversationFn(lastLLMMessage);
       if (!!endOfConversation) {
         return endOfConversation;
