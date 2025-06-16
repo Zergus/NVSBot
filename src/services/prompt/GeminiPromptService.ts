@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI, ChatSession } from "@google/generative-ai";
 import { PromptServiceInterface } from "./PromptServiceInterface";
 import { FROM, TYPE, log } from "../../utils/logger";
+import "moment-timezone";
 import moment from "moment";
 
 /**
@@ -76,7 +77,8 @@ export class GeminiPromptService
     messages: GeminiMessage[]
   ): Promise<GeminiMessage[]> {
     log(FROM.GEMINI, TYPE.INFO, username, userInput);
-    const dayToday = moment().format("dddd");
+    const timezone = "Europe/Kiev";
+    const dayToday = moment().tz(timezone).format("dddd");
     const dateToday = new Date().toLocaleDateString("uk-UA");
     try {
       // Initialize chat session if it doesn't exist or if messages array is empty
